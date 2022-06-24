@@ -1,13 +1,11 @@
-import re
+from pathlib import Path
+from job import Job
 
 
-def guess_os_number(filename: str, pattern: str) -> tuple[int, int]:
-    """Tries to guess the OS Number and Version from a given string."""
+class Worker:
+    """Worker object gets a Job list to do."""
 
-    _os_number = re.search(pattern, filename)
-    if _os_number:
-        os_number = _os_number.group(1)
-        os_version = _os_number.group(2)
-        return (os_number, os_version)
-    else:
-        return (None, None)
+    def __init__(self, jobs: list[Job], source_dir: Path, output_dir: Path):
+        self.jobs = jobs
+        self.source_dir = source_dir
+        self.output_dir = output_dir
