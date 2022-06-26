@@ -1,5 +1,9 @@
+# pylint: disable=E1101
 """Classe para tratar de objetos Job e seus métodos."""
+import re
 from pathlib import Path
+from PyPDF2 import PdfFileReader
+
 from osnumber import guess_os_number
 
 
@@ -12,20 +16,27 @@ class Job:
         self.profile: str = ""
         self.needs_layout: bool = False
         self.needs_proof: bool = False
+        self.layout_files: list = []
+        self.proof_files: list = []
+        self.read_job_data_from_pdf(pdf_file)
 
     def __repr__(self) -> str:
         return f"OS {self.os_number} v{self.os_version}"
 
+    def read_job_data_from_pdf(self, _pdf: Path) -> None:
+        """Reads a PDF file and extract it's text to look for the job
+        information."""
 
-def main():
-    """Main function just for testing purposes."""
-    files = [
-        Path(r"E:\python\juggler\200_210.pdf"),
-        Path(r"E:\python\juggler\OS_498677_3_V3.pdf"),
-    ]
-    jobs = [Job(file) for file in files if guess_os_number(file.name) is not None]
-    print(jobs)
+        with open(_pdf, "rb") as f:
+            reader = PdfFileReader(f)
+            page_one = reader.pages[0]
+            text = page_one.extract_text().split("\n")
 
-
-if __name__ == "__main__":
-    main()
+        for line in text:
+            if line == text[14]:
+                self.profile = "_Perfil_"
+                self.profile += re.search("(.+)Fechamento:", line).groups(1)[0]
+            elif line.startswith("Print Layout"):
+                self.needs_layout = True
+            elif line.startswith("Prova Digital"):
+                self.needs_proof = True
