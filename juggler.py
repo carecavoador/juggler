@@ -109,9 +109,7 @@ def prompt_user(prompt: str) -> bool:
             print("Opção inválida.")
 
 
-def retrieve_job_files(
-    job_files: list[Path], source: Path, output: Path, done_dir: Path
-) -> None:
+def retrieve_job_files(job_files: list[Path], output: Path, done_dir: Path) -> None:
     """Retrieves Job files to output destination and copies done files to done_dir."""
 
     if not done_dir.exists():
@@ -123,31 +121,39 @@ def retrieve_job_files(
     for file in job_files:
 
         # Checks if file was already downloaded.
-        if Path(done_dir, file).exists():
+        file_done = done_dir.joinpath(file.name)
+        if not file_done.exists():
+            copy(file, done_dir)
+
+        # If file was not already downloaded, copies it to done_dir.
+        else:
             download_again = prompt_user(
-                f"O arquivo {file.name} já foi baixado. Deseja Baixá-lo novamente?"
+                f"O arquivo {file_done.name} já foi baixado. Deseja Baixá-lo novamente?"
             )
             if download_again:
-                new_filename = file.stem + NOW + file.suffix
-                new_file_path = done_dir.joinpath(new_filename)
-                copy(file, new_file_path)
-                print(f"Arquivo salvo em {done_dir} como {new_filename}.")
+                file_done = done_dir.joinpath(file_done.stem + NOW + file_done.suffix)
+                copy(file, file_done)
+                print(f"Arquivo salvo como {file_done}.")
             else:
-                pass
+                continue
 
         # Checks if file is already in the output directory.
-        if not Path(output, file).exists():
-            copy(file, output)
+        downloaded_file = output.joinpath(file.name)
+        if not downloaded_file.exists():
+            copy(file, downloaded_file)
         else:
             ovewrite = prompt_user(
-                f"O arquivo {file.name} já existe em {output}. Deseja substituí-lo?"
+                f"O arquivo {downloaded_file} já existe. Deseja substituí-lo?"
             )
             if ovewrite:
-                copy(file, output)
+                copy(file, downloaded_file)
+                print(f"Arquivo {downloaded_file} substituído.")
             else:
-                new_filename = file.stem + NOW + file.suffix
-                copy(file, output.joinpath(new_filename))
-                print(f"Arquivo salvo em {output} como {new_filename}.")
+                downloaded_file = downloaded_file.parent.joinpath(
+                    downloaded_file.stem + NOW + downloaded_file.suffix
+                )
+                copy(file, downloaded_file)
+                print(f"Arquivo salvo como {downloaded_file}.")
 
         # Delete file after all done.
         os.remove(file)
