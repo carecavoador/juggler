@@ -199,18 +199,16 @@ def work() -> None:
 
         # Junta PDFs A4 e copia na pasta correspondente.
         if a4_sheet:
-            retrieve_job_files(a4_sheet, LAYOUTS_DIR, A4_LAYOUTS_OUT, LAYOUTS_DONE_DIR)
+            retrieve_job_files(a4_sheet, A4_LAYOUTS_OUT, LAYOUTS_DONE_DIR)
 
         if a3_sheet:
-            retrieve_job_files(a3_sheet, LAYOUTS_DIR, A3_LAYOUTS_OUT, LAYOUTS_DONE_DIR)
+            retrieve_job_files(a3_sheet, A3_LAYOUTS_OUT, LAYOUTS_DONE_DIR)
 
         if roll_paper:
-            retrieve_job_files(
-                roll_paper, LAYOUTS_DIR, ROLL_LAYOUTS_OUT, LAYOUTS_DONE_DIR
-            )
+            retrieve_job_files(roll_paper, ROLL_LAYOUTS_OUT, LAYOUTS_DONE_DIR)
 
     if jobs_proof_files:
-        retrieve_job_files(jobs_proof_files, PROOFS_DIR, PROOFS_OUT, PROOFS_DONE_DIR)
+        retrieve_job_files(jobs_proof_files, PROOFS_OUT, PROOFS_DONE_DIR)
 
 
 if __name__ == "__main__":
