@@ -4,34 +4,36 @@
 import os
 from pathlib import Path
 from typing import NamedTuple
-from shutil import copy
+from shutil import copy, move
 from datetime import date, datetime
 
 from PyPDF2 import PdfFileReader
 
 from job import Job
 from osnumber import guess_os_number
-from paper_sizes import A4_PAPER, A3_PAPER
+from paper_sizes import PaperSheet, A4_PAPER, A3_PAPER, ROLL_PAPER
+from juntapdf.juntapdf import merge_pdfs
 
 # CONFIGS ---------------------------------------------------------------------
+ROOT = Path(__file__).parent
+
 # Jobs directory.
-JOBS_DIR = Path(r"C:\Projetos\Python\juggler\arquivos")
+JOBS_DIR = Path(ROOT, r"arquivos")
 
 # Layouts input dir and files.
-LAYOUTS_DIR = Path(r"C:\Projetos\Python\juggler\arquivos\layouts")
+LAYOUTS_DIR = Path(ROOT, r"arquivos\layouts")
 LAYOUTS_DONE_DIR = Path(LAYOUTS_DIR, "Baixados")
 LAYOUT_FILES = [Path(LAYOUTS_DIR, layout) for layout in os.listdir(LAYOUTS_DIR)]
+LAYOUT_PAPER_SIZES = [A4_PAPER, A3_PAPER, ROLL_PAPER]
 
 # Proofs input dir and files.
-PROOFS_DIR = Path(r"C:\Projetos\Python\juggler\arquivos\digitais")
+PROOFS_DIR = Path(ROOT, r"arquivos\digitais")
 PROOFS_DONE_DIR = Path(PROOFS_DIR, "Baixados")
 PROOF_FILES = [Path(PROOFS_DIR, digital) for digital in os.listdir(PROOFS_DIR)]
 
 # Output dirs.
-OUTPUT_DIR = Path(r"C:\Projetos\Python\juggler\saida")
-A4_LAYOUTS_OUT = Path(OUTPUT_DIR, "A4")
-A3_LAYOUTS_OUT = Path(OUTPUT_DIR, "A3")
-ROLL_LAYOUTS_OUT = Path(OUTPUT_DIR, "Rolo")
+OUTPUT_DIR = Path(ROOT, r"arquivos\saida")
+LAYOUTS_OUT = Path(OUTPUT_DIR, "Layouts")
 PROOFS_OUT = Path(OUTPUT_DIR, "Provas Digitais")
 
 # Formated current date and time.
@@ -48,48 +50,34 @@ class LayoutSizes(NamedTuple):
     roll: list
 
 
-def separate_by_paper_size(printouts_list: list[Path]) -> LayoutSizes:
+def sort_by_size(
+    printouts_list: list[Path], sizes: list[PaperSheet]
+) -> list[tuple[PaperSheet, list[Path]]]:
     """Reads a list of PDF files and returns a tuple of lists with the files
     separated by paper sizes."""
 
     # PDF files measurements are made in points at 72dpi. This constant is the
     # needed factor to get the sizes in milimeters.
-    pdf_res_to_cm = 72.0 / 25.4
+    pdf_res_to_mm = 72.0 / 25.4
 
-    a4_files = []
-    a3_files = []
-    roll_files = []
+    separated_layouts = []
 
     for printout in printouts_list:
-        with open(printout, "rb") as file:
-            reader = PdfFileReader(file)
-            page = reader.pages[0]
-            width = round(float(page.mediabox.width) / pdf_res_to_cm)
-            height = round(float(page.mediabox.height) / pdf_res_to_cm)
+        for paper_size in sizes:
+            with open(printout, "rb") as file:
+                reader = PdfFileReader(file)
+                page = reader.pages[0]
+                width = round(float(page.mediabox.width) / pdf_res_to_mm)
+                height = round(float(page.mediabox.height) / pdf_res_to_mm)
 
-            # Goes into an A4 sheet.
-            if (
-                width <= A4_PAPER.width
-                and height <= A4_PAPER.height
-                or width <= A4_PAPER.height
-                and height <= A4_PAPER.width
-            ):
-                a4_files.append(printout)
+                # Goes into an A4 sheet.
+                if (width <= paper_size.width and height <= paper_size.height) or (
+                    width <= paper_size.height and height <= paper_size.width
+                ):
+                    separated_layouts.append((paper_size, printout))
+                    break
 
-            # Goes into an A3 sheet.
-            elif (
-                width <= A3_PAPER.width
-                and height <= A3_PAPER.height
-                or width <= A3_PAPER.height
-                and height <= A3_PAPER.width
-            ):
-                a3_files.append(printout)
-
-            # Bigger than A3, must go into a Roll print.
-            else:
-                roll_files.append(printout)
-
-    return LayoutSizes(a4=a4_files, a3=a3_files, roll=roll_files)
+    return separated_layouts
 
 
 def prompt_user(prompt: str) -> bool:
@@ -109,7 +97,7 @@ def prompt_user(prompt: str) -> bool:
             print("Opção inválida.")
 
 
-def retrieve_job_files(job_files: list[Path], output: Path, done_dir: Path) -> None:
+def download_files(job: Job, source: list[Path], output: Path, done_dir: Path) -> None:
     """Retrieves Job files to output destination and copies done files to done_dir."""
 
     if not done_dir.exists():
@@ -118,14 +106,21 @@ def retrieve_job_files(job_files: list[Path], output: Path, done_dir: Path) -> N
     if not output.exists():
         os.mkdir(output)
 
-    for file in job_files:
+    files_to_download = [
+        file
+        for file in source
+        if guess_os_number(file.name) == (job.os_number, job.os_version)
+    ]
+
+    for file in files_to_download:
 
         # Checks if file was already downloaded.
+        # If file was not already downloaded, copies it to done_dir.
         file_done = done_dir.joinpath(file.name)
         if not file_done.exists():
-            copy(file, done_dir)
+            copy(file, file_done)
 
-        # If file was not already downloaded, copies it to done_dir.
+        # If file WAS already downloaded than prompts user to download again.
         else:
             download_again = prompt_user(
                 f"O arquivo {file_done.name} já foi baixado. Deseja Baixá-lo novamente?"
@@ -135,17 +130,20 @@ def retrieve_job_files(job_files: list[Path], output: Path, done_dir: Path) -> N
                 copy(file, file_done)
                 print(f"Arquivo salvo como {file_done}.")
             else:
+                files_to_download.pop(file)
                 continue
 
-        # Checks if file is already in the output directory.
+        # Checks if file is not already in the output directory and copies it.
         downloaded_file = output.joinpath(file.name)
         if not downloaded_file.exists():
             copy(file, downloaded_file)
+
+        # If file was already in the output directory prompts user to overwrite it.
         else:
-            ovewrite = prompt_user(
+            overwrite = prompt_user(
                 f"O arquivo {downloaded_file} já existe. Deseja substituí-lo?"
             )
-            if ovewrite:
+            if overwrite:
                 copy(file, downloaded_file)
                 print(f"Arquivo {downloaded_file} substituído.")
             else:
@@ -158,57 +156,74 @@ def retrieve_job_files(job_files: list[Path], output: Path, done_dir: Path) -> N
         # Delete file after all done.
         os.remove(file)
 
+    return files_to_download
+
 
 def work() -> None:
     """Program starts."""
 
     # Creates Jobs list.
-    jobs_list = [
+    jobs_todo = [
         Job(Path(JOBS_DIR, file))
         for file in [Path(f) for f in os.listdir(JOBS_DIR)]
         if guess_os_number(file.name) is not None
     ]
 
-    jobs_layout_files = []
-    jobs_proof_files = []
+    if not jobs_todo:
+        print("Sem trabalhos no momento.")
+        exit()
 
-    # Looks for Jobs' files in Layouts directory and Proofs directory.
-    for current_job in jobs_list:
+    # Looks for Jobs' files in Layouts directory and Proofs directory and downloads if any.
+    for current_job in jobs_todo:
         if current_job.needs_layout:
-            jobs_layout_files.extend(
-                [
-                    layout
-                    for layout in LAYOUT_FILES
-                    if guess_os_number(layout.name)
-                    == (current_job.os_number, current_job.os_version)
-                ]
+            layout_files = download_files(
+                current_job, LAYOUT_FILES, LAYOUTS_OUT, LAYOUTS_DONE_DIR
             )
+            if layout_files:
+                print(
+                    f"{len(layout_files)} arquivos carregados com sucesso para {current_job}."
+                )
+            else:
+                print(
+                    f"Não foi possível localizar arquivos de print Layout para {current_job}."
+                )
+
         if current_job.needs_proof:
-            jobs_proof_files.extend(
-                [
-                    proof
-                    for proof in PROOF_FILES
-                    if guess_os_number(proof.name)
-                    == (current_job.os_number, current_job.os_version)
-                ]
+            proof_files = download_files(
+                current_job, PROOF_FILES, PROOFS_OUT, PROOFS_DONE_DIR
             )
+            if proof_files:
+                print(
+                    f"{len(proof_files)} arquivos carregados com sucesso para {current_job}."
+                )
+            else:
+                print(
+                    f"Não foi possível localizar arquivos de print Layout para {current_job}."
+                )
 
-    # Processes found Layouts files.
-    if jobs_layout_files:
-        a4_sheet, a3_sheet, roll_paper = separate_by_paper_size(jobs_layout_files)
+    # Organize layouts by size.
+    pdf_layouts = [
+        Path(LAYOUTS_OUT, layout)
+        for layout in os.listdir(LAYOUTS_OUT)
+        if Path(layout).suffix.lower() == ".pdf"
+    ]
 
-        # Junta PDFs A4 e copia na pasta correspondente.
-        if a4_sheet:
-            retrieve_job_files(a4_sheet, A4_LAYOUTS_OUT, LAYOUTS_DONE_DIR)
+    layouts_by_size = sort_by_size(pdf_layouts, LAYOUT_PAPER_SIZES)
 
-        if a3_sheet:
-            retrieve_job_files(a3_sheet, A3_LAYOUTS_OUT, LAYOUTS_DONE_DIR)
+    for paper_size in LAYOUT_PAPER_SIZES:
 
-        if roll_paper:
-            retrieve_job_files(roll_paper, ROLL_LAYOUTS_OUT, LAYOUTS_DONE_DIR)
+        size_path = Path(LAYOUTS_OUT, paper_size.size)
 
-    if jobs_proof_files:
-        retrieve_job_files(jobs_proof_files, PROOFS_OUT, PROOFS_DONE_DIR)
+        if not size_path.exists():
+            os.mkdir(size_path)
+
+        layouts = [
+            layout[1] for layout in layouts_by_size if layout[0].size == paper_size.size
+        ]
+        merge_pdfs(layouts, LAYOUTS_OUT.joinpath(f"Layouts {paper_size.size}.pdf"))
+
+        for layout in layouts:
+            move(layout, size_path.joinpath(layout.name))
 
 
 if __name__ == "__main__":
