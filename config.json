@@ -1,0 +1,24 @@
+{
+    "directories": {
+        "jobs": "E:\\python\\juggler\\arquivos\\jobs",
+        "layouts-in": "E:\\python\\juggler\\arquivos\\entrada\\layouts",
+        "proofs-in": "E:\\python\\juggler\\arquivos\\entrada\\digitais",
+        "layouts-out": "E:\\python\\juggler\\arquivos\\saida\\Layouts",
+        "proofs-out": "E:\\python\\juggler\\arquivos\\saida\\Provas Digitais"
+    },
+
+    "layout-sizes": {
+        "A4": {
+            "height": 297,
+            "width": 210
+        },
+        "A3": {
+            "height": 420,
+            "width": 297
+        },
+        "Rolo": {
+            "height": 2000,
+            "width": 914
+        }
+    }
+}
