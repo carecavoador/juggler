@@ -11,23 +11,10 @@ from busca_trabalhos.os_number import guess_os_number
 from busca_trabalhos.config import carrega_config
 
 
-CONFIG = carrega_config()
-if not CONFIG:
-    saida = input(
-        "Sem arquivo de configuração. Pressione qualquer tecla para sair.\n > "
-    )
-    sys.exit()
-
 HOJE = datetime.today().strftime("%d-%m-%Y")
 AGORA = datetime.now().strftime("%H-%M-%S")
 
 ARGUMENTOS = sys.argv[1:]
-
-SAIDA = Path(CONFIG["diretorios"]["saida"])
-LAYOUTS = Path(CONFIG["diretorios"]["layouts"])
-PROVAS = Path(CONFIG["diretorios"]["provas"])
-LAYOUTS = LAYOUTS.joinpath(HOJE)
-PROVAS = PROVAS.joinpath(HOJE)
 
 
 def busca_arquivos(
@@ -75,6 +62,19 @@ def busca_arquivos(
 def main() -> None:
     """Início do programa."""
 
+    # Carrega arquivo de configurações.
+    config = carrega_config()
+    if not config:
+        saida = input(
+            "Sem arquivo de configuração. Pressione qualquer tecla para sair.\n > "
+        )
+        sys.exit()
+
+    # Diretórios do programa.
+    saida = Path(config["diretorios"]["saida"])
+    layouts = Path(config["diretorios"]["layouts"]).joinpath(HOJE)
+    provas = Path(config["diretorios"]["provas"]).joinpath(HOJE)
+
     # Cria a lista de trabalhos a serem feitos.
     jobs = [
         Job(Path(o))
@@ -89,10 +89,11 @@ def main() -> None:
         sys.exit()
 
     for job in jobs:
+        print(f"Processando {job}...")
         if job.needs_layout:
-            busca_arquivos(job, LAYOUTS, SAIDA, "Layout")
+            busca_arquivos(job, layouts, saida, "Layout")
         if job.needs_proof:
-            busca_arquivos(job, PROVAS, SAIDA, "Prova Digital", sufixo=job.profile)
+            busca_arquivos(job, provas, saida, "Prova Digital", sufixo=job.profile)
 
 
 if __name__ == "__main__":
