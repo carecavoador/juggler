@@ -4,7 +4,7 @@ from re import search
 from pathlib import Path
 from PyPDF2 import PdfReader
 
-from os_number import guess_os_number
+from .os_number import guess_os_number
 
 
 class Job:

@@ -1,3 +1,4 @@
+#!venv\Scripts\python.exe
 # busca_trabalhos.py
 import sys
 import os
@@ -5,18 +6,28 @@ from shutil import copy
 from pathlib import Path
 from datetime import datetime
 
-from job import Job
-from os_number import guess_os_number
+from busca_trabalhos.job import Job
+from busca_trabalhos.os_number import guess_os_number
+from busca_trabalhos.config import carrega_config
 
 
-ARGUMENTOS = sys.argv[1:]
-
-DESKTOP = Path().home().joinpath("Desktop")
-LAYOUTS = Path("/home/careca/Python/juggler/arquivos/layout")
-PROVAS = Path("/home/careca/Python/juggler/arquivos/prova")
+CONFIG = carrega_config()
+if not CONFIG:
+    saida = input(
+        "Sem arquivo de configuração. Pressione qualquer tecla para sair.\n > "
+    )
+    sys.exit()
 
 HOJE = datetime.today().strftime("%d-%m-%Y")
 AGORA = datetime.now().strftime("%H-%M-%S")
+
+ARGUMENTOS = sys.argv[1:]
+
+SAIDA = Path(CONFIG["diretorios"]["saida"])
+LAYOUTS = Path(CONFIG["diretorios"]["layouts"])
+PROVAS = Path(CONFIG["diretorios"]["provas"])
+LAYOUTS = LAYOUTS.joinpath(HOJE)
+PROVAS = PROVAS.joinpath(HOJE)
 
 
 def busca_arquivos(
@@ -33,7 +44,7 @@ def busca_arquivos(
     ]
     if _arquivos:
         for _arquivo in _arquivos:
-            _saida_arquivos = saida.joinpath(tipo) / AGORA
+            _saida_arquivos = saida.joinpath(tipo)
             _novo_arquivo = _saida_arquivos.joinpath(
                 "".join([str(job), "_", tipo, sufixo, _arquivo.suffix])
             )
@@ -58,6 +69,7 @@ def busca_arquivos(
 
     else:
         print(f"Não foi possível localizar arquivos de {tipo} para {job}.")
+        continua = input("Pressione qualquer tecla para continuar...\n> ")
 
 
 def main() -> None:
@@ -71,15 +83,18 @@ def main() -> None:
     ]
 
     if not jobs:
-        print("Sem trabalhos no momento.")
+        saida = input(
+            "Sem trabalhos no momento. Pressione qualquer tecla para sair.\n> "
+        )
         sys.exit()
 
     for job in jobs:
         if job.needs_layout:
-            busca_arquivos(job, LAYOUTS, DESKTOP, "Layout")
+            busca_arquivos(job, LAYOUTS, SAIDA, "Layout")
         if job.needs_proof:
-            busca_arquivos(job, PROVAS, DESKTOP, "Prova Digital", sufixo=job.profile)
+            busca_arquivos(job, PROVAS, SAIDA, "Prova Digital", sufixo=job.profile)
 
 
 if __name__ == "__main__":
     main()
+    saida = input("Programa terminado. Pressione qualquer tecla para sair.\n> ")
