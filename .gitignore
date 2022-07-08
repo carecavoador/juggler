@@ -2,8 +2,4 @@ arquivos/
 venv/
 __pycache__/
 *.stats
-<<<<<<< HEAD
 *.pylintrc
-=======
-.pylintrc
->>>>>>> 67738f645dca50b1bdcab6335ecc21b6b1af951e
