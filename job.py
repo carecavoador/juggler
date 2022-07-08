@@ -4,20 +4,7 @@ from re import search
 from pathlib import Path
 from PyPDF2 import PdfReader
 
-<<<<<<< HEAD
 from os_number import guess_os_number
-=======
-
-def guess_os_number(filename: str) -> tuple[int, int]:
-    """Tries to guess the OS Number and Version from a given string."""
-
-    os_pattern = r"(\d{4,}).*[vV](\d+)"  # regex to match OS Number and Version
-    _os_number = re.search(os_pattern, filename)
-    if _os_number:
-        os_number = _os_number.group(1)
-        os_version = _os_number.group(2)
-        return (os_number, os_version)
->>>>>>> 67738f645dca50b1bdcab6335ecc21b6b1af951e
 
 
 class Job:
