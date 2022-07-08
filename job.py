@@ -1,10 +1,10 @@
 # pylint: disable=E1101
 """Classe para tratar de objetos Job e seus métodos."""
-import re
+from re import search
 from pathlib import Path
-from PyPDF2 import PdfFileReader
+from PyPDF2 import PdfReader
 
-from osnumber import guess_os_number
+from os_number import guess_os_number
 
 
 class Job:
@@ -28,14 +28,14 @@ class Job:
         information."""
 
         with open(_pdf, "rb") as f:
-            reader = PdfFileReader(f)
+            reader = PdfReader(f)
             page_one = reader.pages[0]
             text = page_one.extract_text().split("\n")
 
         for line in text:
             if line == text[14]:
                 self.profile = "_Perfil_"
-                self.profile += re.search("(.+)Fechamento:", line).groups(1)[0]
+                self.profile += search("(.+)Fechamento:", line).groups(1)[0]
             elif line.startswith("Print Layout"):
                 self.needs_layout = True
             elif line.startswith("Prova Digital"):

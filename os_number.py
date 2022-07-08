@@ -20,3 +20,5 @@ def guess_os_number(filename: str) -> tuple[int, int]:
         os_number = _os_number.group(1)
         os_version = _os_number.group(2)
         return (os_number, os_version)
+    else:
+        return None

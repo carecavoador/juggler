@@ -10,7 +10,7 @@ from datetime import date, datetime
 from PyPDF2 import PdfFileReader
 
 from job import Job
-from osnumber import guess_os_number
+from os_number import guess_os_number
 from paper_sizes import PaperSheet, A4_PAPER, A3_PAPER, ROLL_PAPER
 from juntapdf.juntapdf import merge_pdfs
 
