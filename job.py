@@ -23,6 +23,9 @@ class Job:
     def __repr__(self) -> str:
         return f"OS {self.os_number} v{self.os_version}"
 
+    def __str__(self) -> str:
+        return f"OS_{self.os_number}_v{self.os_version}"
+
     def read_job_data_from_pdf(self, _pdf: Path) -> None:
         """Reads a PDF file and extract it's text to look for the job
         information."""
